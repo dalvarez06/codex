@@ -637,12 +637,57 @@ async function* streamResponses(
       }
     }
 
+    if (toolCalls.size === 0 && textContent.includes("<tool_call>")) {
+      const parsed = extractMlxToolCalls(textContent);
+      textContent = parsed.cleaned;
+      let idx = 0;
+      for (const tc of parsed.toolCalls) {
+        const callId = generateId("call");
+        toolCalls.set(idx, {
+          id: callId,
+          name: tc.name,
+          arguments: tc.arguments,
+        });
+        const item = {
+          type: "function_call",
+          id: outputItemId,
+          status: "completed" as const,
+          call_id: callId,
+          name: tc.name,
+          arguments: tc.arguments,
+        } as ResponseContentOutput;
+        finalOutputItem.unshift(item);
+        idx += 1;
+      }
+      if (
+        finalOutputItem.length > 0 &&
+        typeof finalOutputItem[finalOutputItem.length - 1] === "object" &&
+        (finalOutputItem[finalOutputItem.length - 1] as any).type === "message"
+      ) {
+        (finalOutputItem[finalOutputItem.length - 1] as any).content[0].text =
+          textContent;
+      } else if (textContent) {
+        finalOutputItem.push({
+          type: "message",
+          id: outputItemId,
+          status: "completed" as const,
+          role: "assistant",
+          content: [
+            { type: "output_text", text: textContent, annotations: [] },
+          ],
+        } as ResponseContentOutput);
+      }
+    }
+
     // Construct final response
     const finalResponse: ResponseOutput = {
       id: responseId,
       object: "response" as const,
       created_at: initialResponse.created_at || Math.floor(Date.now() / 1000),
-      status: "completed" as const,
+      status:
+        toolCalls.size > 0
+          ? ("requires_action" as const)
+          : ("completed" as const),
       error: null,
       incomplete_details: null,
       instructions: null,
@@ -663,6 +708,22 @@ async function* streamResponses(
       metadata: input.metadata ?? {},
       output_text: "",
     } as ResponseOutput;
+
+    // Add required_action for tool calls if present
+    if (toolCalls.size > 0) {
+      (
+        finalResponse as Partial<ResponseOutput> & { required_action: unknown }
+      ).required_action = {
+        type: "submit_tool_outputs",
+        submit_tool_outputs: {
+          tool_calls: Array.from(toolCalls.values()).map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.name, arguments: tc.arguments },
+          })),
+        },
+      };
+    }
 
     // Store history
     const assistantMessage: OpenAI.Chat.Completions.ChatCompletionMessageParam =

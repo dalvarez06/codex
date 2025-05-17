@@ -105,6 +105,7 @@ export OPENAI_API_KEY="your-api-key-here"
 > - deepseek
 > - xai
 > - groq
+> - mlx
 > - arceeai
 > - any other provider that is compatible with the OpenAI API
 >
@@ -435,6 +436,11 @@ Below is a comprehensive example of `config.json` with multiple custom providers
       "name": "Groq",
       "baseURL": "https://api.groq.com/openai/v1",
       "envKey": "GROQ_API_KEY"
+    },
+    "mlx": {
+      "name": "MLX",
+      "baseURL": "http://localhost:8000/v1",
+      "envKey": "MLX_API_KEY"
     },
     "arceeai": {
       "name": "ArceeAI",

@@ -47,6 +47,11 @@ export const providers: Record<
     baseURL: "https://api.groq.com/openai/v1",
     envKey: "GROQ_API_KEY",
   },
+  mlx: {
+    name: "MLX",
+    baseURL: "http://localhost:8000/v1",
+    envKey: "MLX_API_KEY",
+  },
   arceeai: {
     name: "ArceeAI",
     baseURL: "https://conductor.arcee.ai/v1",
